@@ -6,11 +6,6 @@
     "outDir": "./dist",
     "rootDir": "./",
 
-    "baseUrl": "./",
-    "paths": {
-      "@/*": ["src/*"]
-    },
-
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
@@ -24,12 +19,11 @@
     "sourceMap": true,
     "incremental": true,
     "skipLibCheck": true,
+    "types": ["node"],
 
     "forceConsistentCasingInFileNames": true,
 
-    "noFallthroughCasesInSwitch": true,
-
-    "ignoreDeprecations": "6.0"
+    "noFallthroughCasesInSwitch": true
   },
   "exclude": ["node_modules", "dist", "prisma", "test"]
 }
