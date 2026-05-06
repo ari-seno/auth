@@ -1,5 +1,9 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// This is your Prisma schema file
+// Learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// ============================================
+// GENERATORS & DATASOURCE
+// ============================================
 
 generator client {
   provider = "prisma-client"
@@ -12,7 +16,7 @@ datasource db {
 }
 
 // ============================================
-// USERS & OAUTH
+// USERS & AUTHENTICATION
 // ============================================
 
 model User {
@@ -40,22 +44,29 @@ model User {
   passwordResetTokens PasswordResetToken[]
   loginAttempts      LoginAttempt[]
 
+  // Indexes
+  @@index([email])
+  @@index([username])
+  @@index([isActive])
+  @@index([createdAt])
   @@map("users")
 }
 
 model OAuthAccount {
   id                String   @id @default(cuid())
   userId            String
-  provider          String
+  provider          String   @db.VarChar(50)
   providerUserId    String
   accessToken       String?
   refreshToken      String?
   expiresAt         DateTime?
   createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   // Relations
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // Constraints
   @@unique([provider, providerUserId])
   @@index([userId])
   @@map("oauth_accounts")
@@ -67,50 +78,58 @@ model OAuthAccount {
 
 model Role {
   id          String   @id @default(cuid())
-  name        String   @unique
-  description String?
+  name        String   @unique @db.VarChar(100)
+  description String?  @db.VarChar(500)
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   // Relations
   permissions RolePermission[]
   userRoles   UserRole[]
 
+  @@index([name])
   @@map("roles")
 }
 
 model Permission {
   id          String   @id @default(cuid())
-  name        String   @unique
-  description String?
+  name        String   @unique @db.VarChar(100)
+  description String?  @db.VarChar(500)
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   // Relations
   roles       RolePermission[]
 
+  @@index([name])
   @@map("permissions")
 }
 
 model RolePermission {
   roleId        String
   permissionId  String
+  createdAt     DateTime @default(now())
 
   // Relations
   role          Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
   permission    Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
+  // Constraints
   @@id([roleId, permissionId])
   @@index([permissionId])
   @@map("role_permissions")
 }
 
 model UserRole {
-  userId  String
-  roleId  String
+  userId    String
+  roleId    String
+  assignedAt DateTime @default(now())
 
   // Relations
-  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role    Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
+  // Constraints
   @@id([userId, roleId])
   @@index([roleId])
   @@map("user_roles")
@@ -121,19 +140,22 @@ model UserRole {
 // ============================================
 
 model Session {
-  id        String   @id @default(cuid())
-  userId    String
-  refreshToken String
-  userAgent String?
-  ipAddress String?
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+  id           String   @id @default(cuid())
+  userId       String
+  refreshToken String   @unique
+  userAgent    String?  @db.VarChar(500)
+  ipAddress    String?  @db.VarChar(45)
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   // Relations
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // Indexes
   @@index([userId])
   @@index([expiresAt])
+  @@index([refreshToken])
   @@map("sessions")
 }
 
@@ -142,22 +164,24 @@ model Session {
 // ============================================
 
 model AuditLog {
-  id          String   @id @default(cuid())
-  userId      String?
-  action      String   @db.VarChar(255)
-  resource    String?  @db.VarChar(255)
-  resourceId  String?  @db.VarChar(255)
-  changes     Json?
-  ipAddress   String?  @db.VarChar(45)
-  userAgent   String?
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String   @db.VarChar(100)
+  resource   String?  @db.VarChar(100)
+  resourceId String?  @db.VarChar(50)
+  changes    Json?
+  ipAddress  String?  @db.VarChar(45)
+  userAgent  String?  @db.VarChar(500)
+  createdAt  DateTime @default(now())
 
   // Relations
-  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
+  // Indexes
   @@index([userId])
   @@index([createdAt])
   @@index([resource])
+  @@index([action])
   @@map("audit_logs")
 }
 
@@ -168,7 +192,7 @@ model AuditLog {
 model VerificationToken {
   id        String   @id @default(cuid())
   userId    String
-  token     String   @unique
+  token     String   @unique @db.VarChar(255)
   type      String   @db.VarChar(50)
   expiresAt DateTime
   createdAt DateTime @default(now())
@@ -176,6 +200,7 @@ model VerificationToken {
   // Relations
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // Indexes
   @@index([userId])
   @@index([token])
   @@index([expiresAt])
@@ -185,7 +210,7 @@ model VerificationToken {
 model PasswordResetToken {
   id        String   @id @default(cuid())
   userId    String
-  token     String   @unique
+  token     String   @unique @db.VarChar(255)
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime @default(now())
@@ -193,6 +218,7 @@ model PasswordResetToken {
   // Relations
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // Indexes
   @@index([userId])
   @@index([token])
   @@index([expiresAt])
